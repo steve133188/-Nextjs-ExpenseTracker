@@ -1,4 +1,4 @@
-import { sqliteTable, text, real } from "drizzle-orm/sqlite-core"
+import { sqliteTable, text, real, integer } from "drizzle-orm/sqlite-core"
 
 // database table schema
 export const expenses = sqliteTable("expenses", {
@@ -8,4 +8,5 @@ export const expenses = sqliteTable("expenses", {
   category:    text("category").notNull(),
   date:        text("date").notNull(),
   description: text("description").default(""),
+  createdAt:   integer("created_at").notNull().$defaultFn(() => Date.now()),
 })

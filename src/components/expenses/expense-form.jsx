@@ -1,7 +1,7 @@
 // form fields for creating or editing an expense
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { format, parseISO } from "date-fns"
@@ -21,7 +21,7 @@ import {
 
 const QUICK_AMOUNTS = [5, 10, 20, 50, 100, 200, 500]
 
-export function ExpenseForm({ id, defaultValues, onSubmit, isPending }) {
+export function ExpenseForm({ id, defaultValues, onSubmit, isPending, onValidityChange }) {
   const [catOpen, setCatOpen] = useState(false)
   const [dateOpen, setDateOpen] = useState(false)
 
@@ -30,9 +30,11 @@ export function ExpenseForm({ id, defaultValues, onSubmit, isPending }) {
     control,
     setValue,
     handleSubmit,
-    formState: { errors },
+    trigger,
+    formState: { errors, isValid },
   } = useForm({
     resolver: zodResolver(expenseSchema),
+    mode: "onChange",
     defaultValues: defaultValues ?? {
       title: "",
       amount: "",
@@ -41,6 +43,10 @@ export function ExpenseForm({ id, defaultValues, onSubmit, isPending }) {
       description: "",
     },
   })
+
+  // Validate pre-filled values immediately so the submit button is enabled on open (edit mode)
+  useEffect(() => { if (defaultValues) trigger() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { onValidityChange?.(isValid) }, [isValid, onValidityChange])
 
   return (
     <form id={id} onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
@@ -178,6 +184,7 @@ export function ExpenseForm({ id, defaultValues, onSubmit, isPending }) {
                     field.onChange(day ? format(day, "yyyy-MM-dd") : "")
                     setDateOpen(false)
                   }}
+                  disabled={{ after: new Date() }}
                   initialFocus
                 />
               </PopoverContent>

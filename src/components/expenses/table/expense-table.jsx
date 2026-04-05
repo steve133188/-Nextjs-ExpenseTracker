@@ -1,96 +1,39 @@
 // sortable, paginated table of expense records with edit and delete actions
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
 import { format } from "date-fns"
 import { Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
-import { useDeleteExpense } from "@/hooks/use-expenses"
+import { useExpenseTable } from "@/hooks/use-expense-table"
 import { ExpenseDialog } from "@/components/expenses/expense-dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { categoryBadgeClass } from "@/lib/category-colors"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
+  Pagination, PaginationContent, PaginationEllipsis, PaginationItem,
+  PaginationNext, PaginationPrevious,
 } from "@/components/ui/pagination"
-
-const PAGE_SIZE = 10
-
-function nextDirection(current) {
-  if (current === null) return "asc"
-  if (current === "asc") return "desc"
-  return null
-}
 
 function SortIcon({ column, sortKey, sortDir }) {
   if (sortKey !== column) return <ArrowUpDown className="size-3.5 opacity-40" />
-  if (sortDir === "asc") return <ArrowUp className="size-3.5" />
+  if (sortDir === "asc")  return <ArrowUp className="size-3.5" />
   return <ArrowDown className="size-3.5" />
 }
 
 export function ExpenseTable({ expenses }) {
-  const deleteExpense = useDeleteExpense()
-  const [deletingId, setDeletingId] = useState(null)
-  const [sortKey, setSortKey] = useState("date")
-  const [sortDir, setSortDir] = useState("desc")
-  const [page, setPage] = useState(1)
-
-  // Reset to page 1 whenever the expense list changes (e.g. filter applied)
-  useEffect(() => setPage(1), [expenses])
-
-  function handleSort(column) {
-    if (sortKey === column) {
-      const next = nextDirection(sortDir)
-      if (next === null) { setSortKey(null); setSortDir(null) }
-      else setSortDir(next)
-    } else {
-      setSortKey(column)
-      setSortDir("asc")
-    }
-    setPage(1)
-  }
-
-  const sorted = useMemo(() => {
-    if (!sortKey || !sortDir) return expenses
-    return [...expenses].sort((a, b) => {
-      const aVal = sortKey === "amount" ? a.amount : a.date
-      const bVal = sortKey === "amount" ? b.amount : b.date
-      if (aVal < bVal) return sortDir === "asc" ? -1 : 1
-      if (aVal > bVal) return sortDir === "asc" ? 1 : -1
-      return 0
-    })
-  }, [expenses, sortKey, sortDir])
-
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
-  const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-
-  function handleDelete(id) {
-    setDeletingId(id)
-    deleteExpense.mutate(id, { onSettled: () => setDeletingId(null) })
-  }
+  const {
+    paginated, page, setPage, totalPages,
+    sortKey, sortDir, handleSort,
+    deletingId, handleDelete,
+    pageSize, totalCount,
+  } = useExpenseTable(expenses)
 
   if (expenses.length === 0) {
     return (
@@ -206,12 +149,10 @@ export function ExpenseTable({ expenses }) {
         </Table>
       </div>
 
-      {/* Pagination — only shown when there is more than one page */}
       {totalPages > 1 && (
         <div className="border-t px-4 py-3 flex items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground">
-            {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, sorted.length)} of{" "}
-            {sorted.length}
+            {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, totalCount)} of {totalCount}
           </p>
           <Pagination className="w-auto mx-0">
             <PaginationContent>
@@ -223,7 +164,6 @@ export function ExpenseTable({ expenses }) {
                 />
               </PaginationItem>
 
-              {/* Page number pills */}
               {Array.from({ length: totalPages }, (_, i) => i + 1)
                 .filter((n) => n === 1 || n === totalPages || Math.abs(n - page) <= 1)
                 .reduce((acc, n, idx, arr) => {

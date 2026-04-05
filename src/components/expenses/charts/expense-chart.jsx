@@ -74,10 +74,7 @@ export function ExpenseChart({ expenses }) {
       <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
         {chartData.map((entry) => (
           <div key={entry.category} className="flex items-center gap-1.5 min-w-0">
-            <span
-              className="size-2 shrink-0 rounded-full"
-              style={{ background: entry.fill }}
-            />
+            <span className="size-2 shrink-0 rounded-full" style={{ background: entry.fill }} />
             <span className="truncate text-xs text-muted-foreground">{entry.category}</span>
             <span className="ml-auto text-xs font-medium tabular-nums shrink-0">
               ${entry.total.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}

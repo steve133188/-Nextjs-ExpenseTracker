@@ -1,24 +1,22 @@
 "use client"
 
-import { useState } from "react"
 import { useTheme } from "next-themes"
 import { Wallet, Plus, RefreshCw, Sun, Moon } from "lucide-react"
 import { useExpenses } from "@/hooks/use-expenses"
-import { getPeriodDates, ExpenseFilters } from "@/components/expenses/expense-filters"
+import { useExpenseFilter } from "@/hooks/use-expense-filter"
+import { ExpenseFilters } from "@/components/expenses/filters/expense-filters"
 import { SummaryCard } from "@/components/expenses/summary-card"
-import { ExpenseChart } from "@/components/expenses/expense-chart"
-import { MonthlyTrendsChart } from "@/components/expenses/monthly-trends-chart"
-import { ExpenseTable } from "@/components/expenses/expense-table"
+import { ExpenseChart } from "@/components/expenses/charts/expense-chart"
+import { MonthlyTrendsChart } from "@/components/expenses/charts/monthly-trends-chart"
+import { ExpenseTable } from "@/components/expenses/table/expense-table"
 import { ExpenseDialog } from "@/components/expenses/expense-dialog"
-import { ExpenseListSkeleton } from "@/components/expenses/expense-list-skeleton"
-import { DonutChartSkeleton, BarChartSkeleton } from "@/components/expenses/chart-skeleton"
+import { ExpenseListSkeleton } from "@/components/expenses/table/expense-list-skeleton"
+import { DonutChartSkeleton, BarChartSkeleton } from "@/components/expenses/charts/chart-skeleton"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
-
-const defaultFilter = { period: "week", ...getPeriodDates("week"), categories: [] }
 
 function ChartCard({ title, skeleton, isLoading, isRefetching, children }) {
   return (
@@ -46,7 +44,8 @@ function ChartCard({ title, skeleton, isLoading, isRefetching, children }) {
 
 export default function Home() {
   const { theme, setTheme } = useTheme()
-  const [filter, setFilter] = useState(defaultFilter)
+  const expenseFilter = useExpenseFilter()
+  const { filter } = expenseFilter
 
   const query = useExpenses({ categories: filter.categories, from: filter.from, to: filter.to })
   const expenses     = query.data ?? []
@@ -85,7 +84,7 @@ export default function Home() {
 
       <main className="container mx-auto px-4 py-6 max-w-5xl space-y-4">
         <div className="rounded-lg border bg-card px-4 py-2.5">
-          <ExpenseFilters {...filter} onChange={setFilter} />
+          <ExpenseFilters {...expenseFilter} />
         </div>
 
         <SummaryCard

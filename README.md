@@ -12,16 +12,17 @@ Keeping track of daily spending is hard when everything is scattered. This app g
 
 ## Tech Stack
 
-| Layer      | Technology                                    |
-|------------|-----------------------------------------------|
-| Frontend   | Next.js 16 (App Router), React 19             |
-| Styling    | Tailwind CSS v4, shadcn/ui (Radix Nova)       |
-| Routing    | Next.js App Router (file-based, API routes)   |
-| Forms      | React Hook Form + Zod validation              |
-| State      | TanStack React Query v5                       |
-| Data       | SQLite via better-sqlite3 + Drizzle ORM       |
-| Charts     | Recharts v2                                   |
-| Icons      | Lucide React                                  |
+| Layer      | Technology                                                                          |
+|------------|-------------------------------------------------------------------------------------|
+| Frontend   | Next.js 16 (App Router), React 19                                                   |
+| Styling    | Tailwind CSS v4, shadcn/ui (Radix Nova)                                             |
+| Routing    | Next.js App Router (file-based, API routes)                                         |
+| Forms      | React Hook Form + Zod validation                                                    |
+| State      | TanStack React Query v5                                                             |
+| Data       | SQLite via better-sqlite3 + Drizzle ORM (chosen for zero-config local development) |
+| Charts     | Recharts v2                                                                         |
+| Icons      | Lucide React                                                                        |
+| Deployment | N/A (runs locally)                                                                  |
 
 ---
 
@@ -30,12 +31,14 @@ Keeping track of daily spending is hard when everything is scattered. This app g
 - **Add / edit / delete expenses** — full CRUD with a validated modal form (title, amount, category, date, description)
 - **Single-page application** — all interactions update the page dynamically, no full reloads
 - **Spending by category** — donut chart showing proportional breakdown across 9 categories
-- **Monthly trends chart** — bar chart aggregating spending over the selected period
-- **Period filter presets** — quickly switch between this week, month, quarter, or year
-- **Custom date range picker** — select any date range with a two-month calendar
+- **Expenses trend chart** — bar chart aggregating spending over the selected period, grouped by day / week / month automatically
+- **Period filter presets** — quickly switch between this month or this year
+- **Custom date range picker** — select any date range via calendar (desktop: two-month popover, mobile: bottom drawer); includes shortcuts for last 7 days, last 30 days, last 3 months, and more
 - **Category multi-select filter** — narrow the table and charts to specific categories
-- **Summary card** — total spending and expense count always visible
-- **Sortable table with pagination** — sort by date or amount, 10 rows per page
+- **Summary card** — total spending and expense count for the active filter period
+- **Sortable table with pagination** — sort by date or amount (toggle asc/desc), 10 rows per page
+- **Stable same-day ordering** — expenses on the same date are ordered by insertion time
+- **Form validation** — inline field errors and submit button disabled until all fields are valid; future dates are blocked
 - **Loading skeletons** — skeleton placeholders shown while data is fetching
 - **Toast notifications** — success and error feedback on every mutation
 - **Dark mode toggle** — system-aware theme with manual override
@@ -64,12 +67,23 @@ next-expenses-tracker/
 │   │   ├── layout.js            # root layout with ThemeProvider and QueryProvider
 │   │   └── page.js              # main SPA page, wires all components together
 │   ├── components/
-│   │   ├── expenses/            # all app-specific components
+│   │   ├── expenses/
+│   │   │   ├── charts/          # ExpenseChart (donut), MonthlyTrendsChart (bar), chart skeletons
+│   │   │   ├── filters/         # ExpenseFilters, FilterPeriodButtons, FilterDateRangePicker, FilterCategorySelect
+│   │   │   ├── table/           # ExpenseTable, ExpenseListSkeleton
+│   │   │   ├── expense-dialog.jsx
+│   │   │   ├── expense-form.jsx
+│   │   │   └── summary-card.jsx
 │   │   └── ui/                  # shadcn/ui component library (untouched)
 │   ├── hooks/
-│   │   └── use-expenses.js      # React Query hooks for all CRUD operations
+│   │   ├── use-expenses.js          # React Query hooks for all CRUD operations
+│   │   ├── use-expense-filter.js    # all filter state, handlers, and computed values
+│   │   ├── use-expense-table.js     # sort, pagination, and delete logic for the table
+│   │   ├── use-trends-chart-data.js # bar chart data processing and grouping
+│   │   └── use-mobile.js            # breakpoint hook for responsive behaviour
 │   ├── lib/
 │   │   ├── category-colors.js   # colour config for badges and charts
+│   │   ├── chart-utils.js       # resolveGrouping() and BAR_COLORS
 │   │   ├── db.js                # SQLite connection and Drizzle client
 │   │   ├── schema.js            # Drizzle table schema
 │   │   ├── validations.js       # Zod schema and category list
@@ -104,11 +118,27 @@ npm run db:export   # output: data/expenses-export.json
 
 ---
 
+## API Routes
+
+All data operations go through Next.js API routes. The database is only accessed server-side.
+
+| Method   | Endpoint                  | Description                              |
+|----------|---------------------------|------------------------------------------|
+| `GET`    | `/api/expenses`           | List expenses; supports `?from=`, `?to=`, `?category=` query params |
+| `POST`   | `/api/expenses`           | Create a new expense (validated with Zod) |
+| `PUT`    | `/api/expenses/:id`       | Update an existing expense by ID         |
+| `DELETE` | `/api/expenses/:id`       | Delete an expense by ID                  |
+
+> The edit form is pre-populated from the table row, so there is no `GET /api/expenses/:id` call in the frontend.
+
+---
+
 ## Challenges
 
 Building this app was a good exercise in connecting a React frontend to a backend API and handling real data correctly. Most challenges came from library quirks and getting the data flow right across components.
 
 - **Keeping database code server-side** — Drizzle ORM relies on Node.js modules that can't run in the browser, so `db.js` and `schema.js` must only be imported inside API routes, never in client components.
 - **Recharts rendering issue** — Recharts reads DOM dimensions on mount and broke on first load; wrapping charts in shadcn's `ChartContainer` fixed it cleanly.
-- **Date parsing bug** — building `Date` objects directly from ISO strings shifts dates by the local timezone offset, so I used string slicing (`YYYY-MM`) for monthly grouping instead.
-- **Filter data flow** — making filters affect the table and category chart while the summary card always shows full totals meant carefully deciding which components get filtered data and which don't.
+- **Date parsing bug** — building `Date` objects directly from ISO strings shifts dates by the local timezone offset, so string slicing (`YYYY-MM`) is used for monthly grouping in the chart instead.
+- **Filter data flow** — filters affect the table, charts, and summary card together; the selected date range is passed alongside the expense list so the summary card always labels what period it covers.
+- **Mobile date picker** — a Popover calendar doesn't centre well on small screens, so a Vaul bottom drawer is used on mobile instead, giving a full-width native-feeling sheet.

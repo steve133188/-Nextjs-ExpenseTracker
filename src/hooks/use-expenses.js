@@ -20,6 +20,17 @@ async function fetchExpenses(filters) {
   return res.json()
 }
 
+async function throwWithMessage(res, fallback) {
+  try {
+    const body = await res.json()
+    const msg = body?.error?.formErrors?.[0] ?? body?.error ?? fallback
+    throw new Error(typeof msg === "string" ? msg : fallback)
+  } catch (e) {
+    if (e.message !== fallback) throw e
+    throw new Error(fallback)
+  }
+}
+
 export function useExpenses(filters = {}) {
   return useQuery({
     queryKey: [...QUERY_KEY, filters],
@@ -37,7 +48,7 @@ export function useCreateExpense() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       })
-      if (!res.ok) throw new Error("Failed to create expense")
+      if (!res.ok) await throwWithMessage(res, "Failed to create expense")
       return res.json()
     },
     onSuccess: () => {
@@ -57,7 +68,7 @@ export function useUpdateExpense() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       })
-      if (!res.ok) throw new Error("Failed to update expense")
+      if (!res.ok) await throwWithMessage(res, "Failed to update expense")
       return res.json()
     },
     onSuccess: () => {
@@ -73,7 +84,7 @@ export function useDeleteExpense() {
   return useMutation({
     mutationFn: async (id) => {
       const res = await fetch(`/api/expenses/${id}`, { method: "DELETE" })
-      if (!res.ok) throw new Error("Failed to delete expense")
+      if (!res.ok) await throwWithMessage(res, "Failed to delete expense")
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY })

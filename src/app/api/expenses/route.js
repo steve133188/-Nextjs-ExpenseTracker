@@ -35,7 +35,7 @@ export async function POST(request) {
     if (!result.success) {
       return NextResponse.json({ error: result.error.flatten() }, { status: 400 })
     }
-    const newExpense = { id: crypto.randomUUID(), ...result.data }
+    const newExpense = { id: crypto.randomUUID(), createdAt: Date.now(), ...result.data }
     db.insert(expenses).values(newExpense).run() // CRUD - Create
     return NextResponse.json(newExpense, { status: 201 })
   } catch (err) {

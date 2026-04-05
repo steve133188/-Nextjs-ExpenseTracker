@@ -19,6 +19,7 @@ const FORM_ID = "expense-form"
 
 export function ExpenseDialog({ mode, expense, trigger }) {
   const [open, setOpen] = useState(false)
+  const [isFormValid, setIsFormValid] = useState(mode === "edit")
   const createExpense = useCreateExpense()
   const updateExpense = useUpdateExpense()
 
@@ -46,6 +47,7 @@ export function ExpenseDialog({ mode, expense, trigger }) {
           defaultValues={defaultValues}
           onSubmit={handleSubmit}
           isPending={isPending}
+          onValidityChange={setIsFormValid}
         />
         <DialogFooter className="gap-2">
           <DialogClose asChild>
@@ -53,7 +55,7 @@ export function ExpenseDialog({ mode, expense, trigger }) {
               Cancel
             </Button>
           </DialogClose>
-          <Button type="submit" form={FORM_ID} disabled={isPending}>
+          <Button type="submit" form={FORM_ID} disabled={isPending || !isFormValid}>
             {isPending ? "Saving..." : mode === "edit" ? "Save Changes" : "Add Expense"}
           </Button>
         </DialogFooter>
